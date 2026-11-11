@@ -50,5 +50,8 @@
     "tailwindcss": "4.3.3",
     "typescript": "^5",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "dompurify": "^3.4.17"
   }
 }
