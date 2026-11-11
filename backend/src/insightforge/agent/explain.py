@@ -76,8 +76,7 @@ def llm_explainer(provider: LLMProvider) -> Callable[[AgentState], AgentState]:
         ):
             headline = None  # headlines must be number-free
         explanation = {
-            "headline": headline
-            or (results[0].get("purpose") or "Analysis result"),
+            "headline": headline or (results[0].get("purpose") or "Analysis result"),
             "text": text,
             "verification": verification,
             "assumptions": assumptions,

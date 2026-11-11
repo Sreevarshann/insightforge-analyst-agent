@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from insightforge.agent.service import run_analysis
 from insightforge.api.deps import AppSettings, DbSession
+from insightforge.charts.builder import ChartConfig, ChartError, build_figure
 from insightforge.db.models import Analysis
 from insightforge.llm.base import LLMProvider
 from insightforge.llm.factory import make_provider
@@ -75,6 +76,49 @@ def list_analyses(
     if saved is not None:
         stmt = stmt.where(Analysis.saved == saved)
     return [to_out(a) for a in db.scalars(stmt)]
+
+
+class ChartIn(BaseModel):
+    step: int = Field(ge=1)
+    config: ChartConfig
+
+
+def _load(analysis_id: str, db: DbSession) -> Analysis:
+    a = db.get(Analysis, analysis_id)
+    if a is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return a
+
+
+@router.post("/{analysis_id}/charts/preview")
+def preview_chart(analysis_id: str, body: ChartIn, db: DbSession) -> dict[str, Any]:
+    """Chart Studio: rebuild a figure from the stored result tables with a user config."""
+    a = _load(analysis_id, db)
+    step = next((s for s in a.steps_json if s.get("step") == body.step), None)
+    if step is None:
+        raise HTTPException(status_code=404, detail="Step not found")
+    try:
+        return {"step": body.step, **build_figure(body.config, step["tables"])}
+    except ChartError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.put("/{analysis_id}/charts", response_model=AnalysisOut)
+def save_charts(analysis_id: str, body: list[ChartIn], db: DbSession) -> AnalysisOut:
+    """Persist the chart views shown for an analysis (rebuilt server-side, never stored raw)."""
+    a = _load(analysis_id, db)
+    charts = []
+    for c in body:
+        step = next((s for s in a.steps_json if s.get("step") == c.step), None)
+        if step is None:
+            raise HTTPException(status_code=404, detail=f"Step {c.step} not found")
+        try:
+            charts.append({"step": c.step, **build_figure(c.config, step["tables"])})
+        except ChartError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    a.charts_json = charts
+    db.commit()
+    return to_out(a)
 
 
 @router.get("/{analysis_id}", response_model=AnalysisOut)

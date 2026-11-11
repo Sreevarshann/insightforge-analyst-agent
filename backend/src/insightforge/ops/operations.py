@@ -98,6 +98,23 @@ def _measure_label(agg: str, measure: str | None) -> str:
     return "row count" if measure is None else f"{agg}({measure})"
 
 
+RAW_SAMPLE = 5000
+
+
+def raw_table(df: Any, columns: list[str]) -> ResultTable:
+    """Seeded sample of the operation's own filtered rows, for distribution charts."""
+    part = df[columns]
+    if len(part) > RAW_SAMPLE:
+        part = part.sample(RAW_SAMPLE, random_state=7)
+    rows = part.astype(object).where(part.notna(), None).to_numpy().tolist()
+    return ResultTable(
+        name="raw",
+        columns=columns,
+        rows=[[_clean(v) for v in r] for r in rows],
+        truncated=len(df) > RAW_SAMPLE,
+    )
+
+
 def _result(
     ctx: OpContext, op: str, args: Any, tables: list[ResultTable], facts: Facts, **kw: Any
 ) -> OpResult:
@@ -421,7 +438,10 @@ def group_compare(ctx: OpContext, a: GroupCompareArgs) -> OpResult:
         facts.add(f"mean {a.measure} for {gname}={k}", mean, _unit_for("avg", a.measure), group=k)
         facts.add(f"median {a.measure} for {gname}={k}", med, _unit_for("avg", a.measure), group=k)
         facts.add(f"rows in {gname}={k}", len(v), "count", group=k)
-    tables = [ResultTable(name="groups", columns=[gname, "n", "mean", "median", "std"], rows=rows)]
+    tables = [
+        ResultTable(name="groups", columns=[gname, "n", "mean", "median", "std"], rows=rows),
+        raw_table(df.rename(columns={"grp": gname, "v": a.measure}), [gname, a.measure]),
+    ]
     tests = []
     valid = [v for v in groups.values() if len(v) >= 2]
     notes = [CAUSATION_NOTE]
@@ -454,7 +474,7 @@ def group_compare(ctx: OpContext, a: GroupCompareArgs) -> OpResult:
         tables,
         facts,
         notes=notes,
-        chart_hint={"type": "box", "x": gname, "y": a.measure, "table": "groups"},
+        chart_hint={"type": "box", "x": gname, "y": a.measure},
     )
 
 
@@ -586,10 +606,12 @@ def correlation(ctx: OpContext, a: CorrelationArgs) -> OpResult:
             rows=sorted(pairs, key=lambda p: -abs(p[2])),
         ),
     ]
+    if len(names) == 2:
+        tables.append(raw_table(df.dropna(), names))
     hint = (
         {"type": "heatmap", "table": "matrix"}
         if len(names) > 2
-        else {"type": "scatter", "x": names[0], "y": names[1], "dataset": a.dataset}
+        else {"type": "scatter", "x": names[0], "y": names[1]}
     )
     return _result(ctx, "correlation", a, tables, facts, notes=[CAUSATION_NOTE], chart_hint=hint)
 
@@ -623,7 +645,8 @@ def regression(ctx: OpContext, a: RegressionArgs) -> OpResult:
                 name="coefficients",
                 columns=["term", "coef", "std_err", "p_value", "ci95_low", "ci95_high"],
                 rows=rows,
-            )
+            ),
+            raw_table(df, [feats[0], target]),
         ],
         facts,
         notes=[
@@ -634,7 +657,6 @@ def regression(ctx: OpContext, a: RegressionArgs) -> OpResult:
             "type": "scatter",
             "x": feats[0],
             "y": target,
-            "dataset": a.dataset,
             "trendline": True,
         },
     )
@@ -823,6 +845,7 @@ def outliers(ctx: OpContext, a: OutlierArgs) -> OpResult:
                 for r in flagged.astype(object).where(flagged.notna(), None).to_numpy().tolist()
             ],
         ),
+        raw_table(df, [c for c in (gname, col) if c]),
     ]
     rule = f"{a.threshold} x IQR" if a.method == "iqr" else f"|z| > {a.threshold}"
     return _result(
@@ -832,7 +855,7 @@ def outliers(ctx: OpContext, a: OutlierArgs) -> OpResult:
         tables,
         facts,
         notes=[f"Outlier rule: {rule}{' within each ' + gname if gname else ''}."],
-        chart_hint={"type": "box", "x": gname, "y": col, "dataset": a.dataset},
+        chart_hint={"type": "box", "x": gname, "y": col},
     )
 
 

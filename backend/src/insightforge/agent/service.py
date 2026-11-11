@@ -88,7 +88,7 @@ def run_analysis(
     analysis.steps_json = results
     analysis.dataset_versions = sorted({v for r in results for v in r.get("dataset_versions", [])})
     explanation = state.get("explanation") or {}
-    analysis.charts_json = explanation.get("charts", [])
+    analysis.charts_json = state.get("charts", [])
     if state.get("clarification"):
         analysis.status = "needs_clarification"
         analysis.explanation = state["clarification"]

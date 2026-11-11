@@ -31,6 +31,7 @@ from insightforge.agent.catalog import build_catalog, catalog_text
 from insightforge.agent.plan import PLAN_JSON_SCHEMA, Plan, op_adapter
 from insightforge.agent.prompts import PLAN_FEEDBACK, PLANNER_SYSTEM, PLANNER_USER
 from insightforge.agent.sqlfacts import sql_to_result
+from insightforge.charts.builder import ChartError, build_figure, suggest_config
 from insightforge.config import Settings
 from insightforge.llm.base import LLMError, LLMProvider
 from insightforge.ops.context import OpContext, OpError
@@ -53,6 +54,7 @@ class AgentState(TypedDict, total=False):
     attempts: int
     clarification: str | None
     explanation: dict[str, Any]
+    charts: list[dict[str, Any]]
     trace: list[dict[str, Any]]
 
 
@@ -201,6 +203,27 @@ def build_graph(
                 notes.append(f"Step {r['step']} returned no rows; filters may exclude all data.")
         return {"trace": _trace(state, "inspect", t0, notes=notes)}
 
+    def charts(state: AgentState) -> AgentState:
+        t0 = time.perf_counter()
+        _emit({"type": "stage", "stage": "charts", "status": "start"})
+        out, notes = [], []
+        for r in state.get("results", []):
+            hint = r.get("chart_hint")
+            cfg = suggest_config(hint, r["tables"], title=r.get("purpose") or None)
+            if cfg is None:
+                continue
+            try:
+                fig = build_figure(cfg, r["tables"])
+                chart = {"step": r["step"], **fig}
+                out.append(chart)
+                _emit({"type": "chart", "chart": chart})
+            except ChartError as exc:
+                notes.append(f"Step {r['step']}: {exc}")
+        return {
+            "charts": out,
+            "trace": _trace(state, "charts", t0, charts=len(out), notes=notes),
+        }
+
     def after_validate(state: AgentState) -> str:
         if state.get("clarification"):
             return "end"
@@ -226,6 +249,7 @@ def build_graph(
     g.add_node("validate", validate)
     g.add_node("execute", execute)
     g.add_node("inspect", inspect)
+    g.add_node("charts", charts)
     g.add_node("explain", explain)
     g.add_edge(START, "catalog")
     g.add_edge("catalog", "plan")
@@ -236,6 +260,7 @@ def build_graph(
         {"plan": "plan", "execute": "execute", "explain": "explain", "end": END},
     )
     g.add_edge("execute", "inspect")
-    g.add_conditional_edges("inspect", after_inspect, {"plan": "plan", "explain": "explain"})
+    g.add_conditional_edges("inspect", after_inspect, {"plan": "plan", "explain": "charts"})
+    g.add_edge("charts", "explain")
     g.add_edge("explain", END)
     return g.compile()
