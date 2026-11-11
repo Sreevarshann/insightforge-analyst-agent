@@ -1,13 +1,14 @@
 "use client";
 
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { AlertCircle, Bookmark, BookmarkCheck, ChevronDown, Download, HelpCircle, Table2 } from "lucide-react";
+import { AlertCircle, Bookmark, BookmarkCheck, ChevronDown, HelpCircle, Table2 } from "lucide-react";
 import { motion } from "motion/react";
 import { formatCell } from "@/lib/format";
 import type { Analysis, Chart, StepResult, Verification } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { Plot } from "../charts/Plot";
 import { Badge, Button, Card, Skeleton } from "../ui/primitives";
+import { ExportMenu } from "./ExportMenu";
 import { StageProgress } from "./StageProgress";
 import type { LiveRun } from "./useAnalysisRun";
 import { VerificationBadge } from "./VerificationBadge";
@@ -48,9 +49,7 @@ export function ResultCard({ data, selected, onSelect, onToggleSave, onAskClarif
             <VerificationBadge v={data.verification} />
             {a && (
               <>
-                <a href={`/api/analyses/${a.id}/report?format=html`} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()} className="rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-text" aria-label="Open report">
-                  <Download className="size-4" />
-                </a>
+                <ExportMenu a={a} />
                 <button onClick={(e) => (e.stopPropagation(), onToggleSave?.())} className="rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-text" aria-label={a.saved ? "Remove from saved" : "Save analysis"} aria-pressed={a.saved}>
                   {a.saved ? <BookmarkCheck className="size-4 text-lime" /> : <Bookmark className="size-4" />}
                 </button>

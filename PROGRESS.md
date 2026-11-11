@@ -23,6 +23,8 @@ Records only work that has actually been done and verified.
 | 12 | Frontend design system (graphite/aurora-lime tokens, light/dark, original logo, app shell, keyboard nav) + landing page + Dataset Explorer (upload, profile stats, suggestions, schema inspector w/ Plotly distributions, server-side preview table, versions, compare) | see git log | ✔ | eslint ✔ · tsc ✔ · manually verified in browser against seeded demo data |
 | — | SSE no-transform middleware (found: Next.js gzip buffered the stream) + single-column group_by coercion (found in live qwen3 runs) | `482956d` | ✔ | pytest 166 passed, 1 skipped |
 | 13 | Analysis Copilot workspace: 3-pane layout, live SSE stage progress, result cards (verified explanation + badge, Plotly charts, step tables, notes), clarification flow, save/bookmark, inspector (facts & verification checks & removed sentences & draft, executed SQL, trace timings + raw plan + LLM usage, Chart Studio) | see git log | ✔ | eslint ✔ · tsc ✔ · verified in browser with live local model |
+| 14 | Reports & exports: Markdown, self-contained HTML (escaped, CSP, validated charts), CSV with formula-injection neutralisation | `c1ef9f6` | ✔ | pytest 170 passed, 1 skipped |
+| 15 | Saved Analyses page (search/filter/status), Query Console (Monaco SQL editor, sandbox isolation level shown, audit log), export menu on result cards | see git log | ✔ | eslint ✔ · tsc ✔ · browser-verified |
 
 ## Known limitations
 - No functional features yet beyond the health endpoint.
