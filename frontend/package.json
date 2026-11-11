@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "screenshots": "SCREENSHOT_BASE_URL=http://127.0.0.1:3101 playwright test"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

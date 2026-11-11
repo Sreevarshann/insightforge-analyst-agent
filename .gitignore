@@ -32,3 +32,5 @@ next-env.d.ts
 .vscode/
 demo-data/
 .claude/
+backend/var-e2e/
+frontend/playwright-report/

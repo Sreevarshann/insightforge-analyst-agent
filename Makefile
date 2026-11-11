@@ -33,3 +33,30 @@ seed:
 
 demo-data:
 	cd $(BACKEND) && uv run python -m insightforge.demo.generate --out ../demo-data
+
+.PHONY: evaluate evaluate-fixture e2e screenshots test-web
+# Benchmark against the real local model (writes eval/results/latest-ollama-*.json).
+evaluate:
+	cd $(BACKEND) && uv run python -m insightforge.evaluation.benchmark --provider ollama --model qwen3:4b-instruct --out ../eval/results
+
+# Deterministic pipeline benchmark (fixture heuristic, not an LLM).
+evaluate-fixture:
+	cd $(BACKEND) && uv run python -m insightforge.evaluation.benchmark --provider fixture --out ../eval/results
+
+test-web:
+	cd frontend && npm run lint && npm run typecheck && npm test
+
+# Isolated stack on ports 8191/3191 with the fixture provider and fresh synthetic data.
+e2e:
+	cd frontend && npx playwright test
+
+# Requires `make dev-api` + `make dev-web` running with the real model.
+screenshots:
+	cd frontend && SCREENSHOT_BASE_URL=http://127.0.0.1:3101 npx playwright test
+
+.PHONY: dev-web install-web
+install-web:
+	cd frontend && npm ci
+
+dev-web:
+	cd frontend && npm run dev -- --port 3101

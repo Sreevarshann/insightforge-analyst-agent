@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from insightforge.config import get_settings
+from insightforge.config import Settings, get_settings
 from insightforge.db.models import Dataset
 from insightforge.db.session import make_engine, make_sessionmaker, run_migrations
 from insightforge.demo.generate import write
@@ -28,8 +28,8 @@ RELATIONSHIPS = [
 ]
 
 
-def seed(data_dir: Path | None = None) -> list[str]:
-    settings = get_settings()
+def seed(data_dir: Path | None = None, settings: Settings | None = None) -> list[str]:
+    settings = settings or get_settings()
     engine = make_engine(settings.metadata_db_path)
     run_migrations(engine)
     db = make_sessionmaker(engine)()
@@ -56,6 +56,8 @@ def seed(data_dir: Path | None = None) -> list[str]:
     for lt, lc, rt, rc in RELATIONSHIPS:
         if lt in by_name and rt in by_name:
             create_relationship(db, settings, by_name[lt], lc, by_name[rt], rc, exist_ok=True)
+    db.close()
+    engine.dispose()
     return created
 
 
