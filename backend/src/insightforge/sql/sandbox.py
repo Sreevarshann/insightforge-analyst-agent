@@ -165,6 +165,8 @@ def wrapper(level: str, read_paths: list[Path]) -> list[str]:
                 cmd += ["--ro-bind", ro, ro]
         for p in read_paths:
             cmd += ["--ro-bind", str(p), str(p)]
+        # Make bwrap's own root read-only too (only the private /tmp tmpfs stays writable).
+        cmd += ["--remount-ro", "/"]
         return cmd
     return []
 

@@ -14,7 +14,9 @@ Records only work that has actually been done and verified.
 | 8 | Numerical verifier + LLM explainer: fact placeholders, raw-number/unit/group/significance/causality checks, sentence removal, deterministic fallback | `072eb8a` | ✔ verified | pytest 143 passed, 1 skipped; live 3/3; see docs/ANALYTICAL_VERIFICATION.md for observed live behaviour |
 | 9 | Plotly chart service: typed ChartConfig → server-built, Plotly-validated figures; chart node in the agent graph; Chart Studio preview/save API; raw-data charts use the op's own filtered sample | `f59cd68` | ✔ verified | pytest 154 passed, 1 skipped |
 | — | CI workflow (ruff, mypy, tests, pip-audit, gitleaks history scan); sandbox isolation probe | `a5953b3` | ✔ | **CI run 42958550377: backend job FAILED on Linux** (sandbox worker terminated); secret scan passed. Investigating. |
-| 10 | Synthetic demo data (Lumen Commerce, planted documented patterns), `make seed`, validated relationships API, join guard in SQL policy, sandbox stderr logging | see git log | ✔ | pytest 162 passed, 1 skipped (macOS) |
+| 10 | Synthetic demo data (Lumen Commerce, planted documented patterns), `make seed`, validated relationships API, join guard in SQL policy, sandbox stderr logging | `a5325c9` | ✔ | pytest 162 passed, 1 skipped (macOS); CI run 42959023407 failed (bwrap could not exec the venv interpreter) |
+| — | Sandbox: bind interpreter symlink chain in bwrap; OS-isolation tests run under any active sandbox | `00690a8` | ✔ | CI run 42959645045: 162 passed, 1 failed (bwrap root writable). **Note:** this commit also unintentionally included the unmodified create-next-app scaffold under `frontend/`; history was not rewritten. |
+| — | Sandbox: remount bwrap root read-only | see git log | ✔ | Linux container (bwrap): sandbox + query tests 14/14 |
 
 ## Known limitations
 - No functional features yet beyond the health endpoint.
