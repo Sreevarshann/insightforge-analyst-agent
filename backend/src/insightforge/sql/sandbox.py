@@ -16,6 +16,7 @@ Isolation layers (outermost first):
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import platform
@@ -111,12 +112,22 @@ def _preexec(limits: SandboxLimits) -> None:  # runs in the child before exec
     os.setsid()
 
 
+@functools.cache
 def isolation_level() -> str:
+    """Strongest isolation that actually *works* here (probed once, not just detected)."""
     if platform.system() == "Darwin" and shutil.which("sandbox-exec"):
-        return "sandbox-exec"
-    if platform.system() == "Linux" and shutil.which("bwrap"):
-        return "bwrap"
-    return "rlimits"
+        probe = ["sandbox-exec", "-p", "(version 1)(allow default)(deny network*)", "/usr/bin/true"]
+    elif platform.system() == "Linux" and shutil.which("bwrap"):
+        probe = ["bwrap", "--unshare-all", "--ro-bind", "/", "/", "/bin/true"]
+    else:
+        return "rlimits"
+    try:
+        ok = subprocess.run(probe, capture_output=True, timeout=10, check=False).returncode == 0  # noqa: S603
+    except (OSError, subprocess.TimeoutExpired):
+        ok = False
+    if not ok:
+        return "rlimits"
+    return "sandbox-exec" if probe[0] == "sandbox-exec" else "bwrap"
 
 
 def _command(level: str, read_paths: list[Path], workdir: Path) -> list[str]:
