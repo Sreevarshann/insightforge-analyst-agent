@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import queue
+import threading
+from collections.abc import Iterator
 from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -48,6 +52,13 @@ def to_out(a: Analysis) -> AnalysisOut:
     )  # fmt: skip
 
 
+def _load(analysis_id: str, db: DbSession) -> Analysis:
+    a = db.get(Analysis, analysis_id)
+    if a is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return a
+
+
 def get_provider(request: Request, settings: AppSettings) -> LLMProvider:
     factory = getattr(request.app.state, "provider_factory", None)
     return factory() if factory else make_provider(settings)
@@ -68,6 +79,60 @@ def create(body: AnalysisIn, request: Request, db: DbSession, settings: AppSetti
     )
 
 
+@router.post("/stream", response_class=EventSourceResponse)
+def create_stream(
+    body: AnalysisIn, request: Request, settings: AppSettings
+) -> Iterator[dict[str, Any]]:
+    """Run an analysis and stream the agent's real progress events as SSE.
+
+    The graph runs in a worker thread with its own DB session; events are forwarded as
+    they are emitted by graph nodes (stage start/finish, plan, results, charts,
+    verified explanation), followed by the persisted analysis.
+    """
+    provider = get_provider(request, settings)
+    factory = request.app.state.sessionmaker
+    explain_factory = request.app.state.explain_factory
+    events: queue.Queue[dict[str, Any] | None] = queue.Queue()
+
+    def work() -> None:
+        with factory() as db:
+            try:
+                a = run_analysis(
+                    db,
+                    settings,
+                    provider,
+                    body.question,
+                    dataset_ids=body.dataset_ids,
+                    on_event=events.put,
+                    explain_factory=explain_factory,
+                )
+                events.put({"type": "done", "analysis": to_out(a).model_dump(mode="json")})
+            except Exception:
+                events.put({"type": "error", "message": "The analysis failed unexpectedly."})
+            finally:
+                events.put(None)
+
+    threading.Thread(target=work, daemon=True, name="analysis-stream").start()
+    while (event := events.get()) is not None:
+        yield event
+
+
+class AnalysisPatch(BaseModel):
+    saved: bool | None = None
+    title: str | None = Field(default=None, max_length=255)
+
+
+@router.patch("/{analysis_id}", response_model=AnalysisOut)
+def update(analysis_id: str, body: AnalysisPatch, db: DbSession) -> AnalysisOut:
+    a = _load(analysis_id, db)
+    if body.saved is not None:
+        a.saved = body.saved
+    if body.title is not None:
+        a.title = body.title
+    db.commit()
+    return to_out(a)
+
+
 @router.get("", response_model=list[AnalysisOut])
 def list_analyses(
     db: DbSession, saved: bool | None = None, limit: Annotated[int, Query(ge=1, le=200)] = 50
@@ -81,13 +146,6 @@ def list_analyses(
 class ChartIn(BaseModel):
     step: int = Field(ge=1)
     config: ChartConfig
-
-
-def _load(analysis_id: str, db: DbSession) -> Analysis:
-    a = db.get(Analysis, analysis_id)
-    if a is None:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-    return a
 
 
 @router.post("/{analysis_id}/charts/preview")
