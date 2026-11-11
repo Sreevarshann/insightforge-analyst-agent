@@ -54,6 +54,7 @@ def execute_query(
     origin: Literal["agent", "user"],
     analysis_id: str | None = None,
     max_rows: int | None = None,
+    hard_cap: int | None = None,
 ) -> QueryResult:
     catalog = dataset_catalog(db, settings)
     log = QueryLog(sql=sql[:20_000], origin=origin, analysis_id=analysis_id, accepted=False)
@@ -68,7 +69,7 @@ def execute_query(
     limits = SandboxLimits(
         timeout_seconds=settings.query_timeout_seconds,
         memory_mb=settings.sandbox_memory_mb,
-        max_rows=min(max_rows or settings.query_max_rows, settings.query_max_rows),
+        max_rows=min(max_rows or settings.query_max_rows, hard_cap or settings.query_max_rows),
     )
     views = {t: catalog[t][0] for t in sorted(validated.tables)}
     started = time.perf_counter()

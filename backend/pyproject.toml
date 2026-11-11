@@ -19,8 +19,11 @@ dependencies = [
     "pydantic>=2.14.3",
     "pydantic-settings>=2.16.2",
     "python-multipart>=0.0.33",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
     "sqlalchemy>=2.1.8",
     "sqlglot>=30.31.0",
+    "statsmodels>=0.15.0",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -50,6 +53,10 @@ ignore = ["S101"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S"]
 "src/insightforge/migrations/**" = ["E501", "I", "UP", "RUF"]
+# Operations compile typed arguments to SQL: identifiers come only from the stored schema and
+# are quoted, literals are rendered by SQLGlot, and every statement is re-validated by the AST
+# policy and executed in the sandbox. Long f-string SQL lines are kept readable on purpose.
+"src/insightforge/ops/operations.py" = ["S608", "E501"]
 
 [tool.mypy]
 python_version = "3.13"

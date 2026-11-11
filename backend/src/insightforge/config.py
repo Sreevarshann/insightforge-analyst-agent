@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     query_timeout_seconds: float = 10.0
     query_max_rows: int = 10_000
     sandbox_memory_mb: int = 1024
+    # Internal row cap for typed operations that need raw rows (regression, clustering, ...)
+    analysis_max_rows: int = 200_000
 
     @property
     def datasets_dir(self) -> Path:
