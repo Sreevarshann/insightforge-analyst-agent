@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from insightforge import __version__
-from insightforge.api import health
+from insightforge.api import datasets, health
 from insightforge.config import Settings, get_settings
 from insightforge.db.session import make_engine, make_sessionmaker, run_migrations
 from insightforge.logging import configure_logging
@@ -54,6 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
     app.include_router(health.router, prefix="/api")
+    app.include_router(datasets.router, prefix="/api")
     return app
 
 
