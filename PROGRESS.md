@@ -19,6 +19,8 @@ Records only work that has actually been done and verified.
 | — | Sandbox: remount bwrap root read-only | `24958e5` | ✔ | Linux container (bwrap): sandbox + query tests 14/14 |
 
 | 11 | SSE streaming endpoint (`POST /api/analyses/stream`, FastAPI native SSE; real graph events) + save/rename analyses | see git log | ✔ | pytest 164 passed, 1 skipped |
+| — | Linux RLIMIT_AS headroom fix | `05e1e6a` | ✔ | **CI run 42960236649: all jobs green** (lint, mypy, 164 tests, pip-audit, gitleaks) |
+| 12 | Frontend design system (graphite/aurora-lime tokens, light/dark, original logo, app shell, keyboard nav) + landing page + Dataset Explorer (upload, profile stats, suggestions, schema inspector w/ Plotly distributions, server-side preview table, versions, compare) | see git log | ✔ | eslint ✔ · tsc ✔ · manually verified in browser against seeded demo data |
 
 ## Known limitations
 - No functional features yet beyond the health endpoint.
