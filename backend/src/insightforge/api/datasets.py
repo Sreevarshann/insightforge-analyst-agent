@@ -18,6 +18,7 @@ from insightforge.ingest.service import (
     safe_filename,
     spool_upload,
 )
+from insightforge.profiling.engine import profile_parquet
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
@@ -132,6 +133,20 @@ def upload_version(
 @router.delete("/{dataset_id}", status_code=204)
 def remove_dataset(ds: DatasetDep, db: DbSession, settings: AppSettings) -> None:
     delete_dataset(db, settings, ds)
+
+
+@router.get("/{dataset_id}/profile")
+def get_profile(
+    ds: DatasetDep, db: DbSession, settings: AppSettings, version: int | None = None
+) -> dict[str, Any]:
+    """Real per-column statistics, computed at ingest and cached on the version."""
+    ver = _pick_version(ds, version)
+    if ver.profile_json is None:
+        ver.profile_json = profile_parquet(
+            settings.datasets_dir / ver.storage_path, ver.schema_json
+        )
+        db.commit()
+    return {"dataset_id": ds.id, "version": ver.version, **ver.profile_json}
 
 
 @router.get("/{dataset_id}/preview", response_model=PreviewOut)

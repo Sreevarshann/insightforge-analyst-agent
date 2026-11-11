@@ -17,6 +17,7 @@ from insightforge.config import Settings
 from insightforge.db.models import Dataset, DatasetVersion
 from insightforge.ingest.formats import IngestError, ParsedTable, detect_format, parse
 from insightforge.ingest.normalize import normalize_columns, to_identifier, unique_identifier
+from insightforge.profiling.engine import profile_parquet
 
 
 def safe_filename(name: str | None) -> str:
@@ -132,6 +133,7 @@ def _make_version(
 ) -> DatasetVersion:
     rel = _store(settings, ds, n, parsed)
     schema = describe_schema(settings.datasets_dir / rel)
+    profile = profile_parquet(settings.datasets_dir / rel, schema)
     return DatasetVersion(
         version=n,
         source_format=fmt,
@@ -141,6 +143,7 @@ def _make_version(
         row_count=parsed.table.num_rows,
         column_count=len(schema),
         schema_json=schema,
+        profile_json=profile,
     )
 
 
