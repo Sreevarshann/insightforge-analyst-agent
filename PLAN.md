@@ -27,7 +27,7 @@
 4. Profiling engine ✔
 5. SQL validation + sandboxed execution ✔
 6. Statistical operations ✔
-7. LLM providers + agent planner
+7. LLM providers + agent planner ✔
 8. Numerical verifier
 9. Plotly chart service
 10. Frontend design system

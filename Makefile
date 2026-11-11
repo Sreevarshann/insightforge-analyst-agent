@@ -20,3 +20,8 @@ typecheck:
 
 fmt:
 	cd $(BACKEND) && uv run ruff format . && uv run ruff check --fix .
+
+.PHONY: test-live
+# Requires a running Ollama with qwen3:4b-instruct pulled.
+test-live:
+	cd $(BACKEND) && uv run pytest -m live -s
