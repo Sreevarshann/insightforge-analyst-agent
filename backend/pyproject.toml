@@ -53,7 +53,6 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "ASYNC"]
 ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S"]
 "src/insightforge/migrations/**" = ["E501", "I", "UP", "RUF"]
 # Operations compile typed arguments to SQL: identifiers come only from the stored schema and
 # are quoted, literals are rendered by SQLGlot, and every statement is re-validated by the AST
@@ -61,6 +60,8 @@ ignore = ["S101"]
 "src/insightforge/ops/operations.py" = ["S608", "E501"]
 "src/insightforge/agent/*.py" = ["E501"]
 "src/insightforge/api/analyses.py" = ["E501"]
+"src/insightforge/verify/*.py" = ["E501"]
+"tests/**" = ["S", "E501"]
 "src/insightforge/llm/fixture.py" = ["E501"]
 
 [tool.mypy]

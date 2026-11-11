@@ -158,3 +158,45 @@ def test_analysis_history_is_persisted(loaded: TestClient) -> None:
     got = loaded.get(f"/api/analyses/{a['id']}").json()
     assert got["steps"] == a["steps"]
     assert loaded.get("/api/analyses").json()[0]["id"] == a["id"]
+
+
+def test_explanation_is_verified_and_rendered(loaded: TestClient) -> None:
+    a = ask(loaded, "What is total revenue by region?")
+    v = a["verification"]
+    assert v["status"] == "verified" and v["cited_fact_ids"]
+    assert "{{" not in a["explanation"] and "$" in a["explanation"]
+
+
+class LyingProvider(ScriptedProvider):
+    def complete_json(
+        self, *, task: str, system: str, user: str, schema: dict[str, Any], payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        if task == "explain":
+            return {
+                "headline": "Revenue up 300%",
+                "explanation": "Total revenue was $1,000,000. Discounts drive revenue.",
+            }
+        return super().complete_json(
+            task=task, system=system, user=user, schema=schema, payload=payload
+        )
+
+
+def test_fabricated_explanation_is_replaced(loaded: TestClient) -> None:
+    plan = {
+        "needs_clarification": False,
+        "assumptions": [],
+        "steps": [
+            {
+                "tool": "op",
+                "purpose": "Total revenue",
+                "args": {"op": "aggregate", "dataset": "orders", "measure": "revenue"},
+            }
+        ],
+    }
+    _with(loaded, LyingProvider([plan]))
+    a = ask(loaded, "total revenue")
+    assert a["verification"]["status"] == "abstained"
+    assert "1,000,000" not in a["explanation"] and "drive" not in a["explanation"]
+    assert a["title"] == "Total revenue"  # numeric headline rejected
+    df = loaded.app.state.frame  # type: ignore[attr-defined]
+    assert f"${df.revenue.sum():,.2f}" in a["explanation"]

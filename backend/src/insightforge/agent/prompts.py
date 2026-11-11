@@ -47,3 +47,25 @@ PLAN_FEEDBACK = """
 The previous plan failed validation or execution:
 {errors}
 Fix the plan. Use only existing columns and valid operation arguments."""
+
+EXPLAIN_SYSTEM = """You write the explanation for a completed data analysis.
+You are given computed FACTS, each with an id. You must not compute or invent numbers.
+
+Rules:
+- Write 2 to 5 short sentences answering the question directly.
+- Write every number ONLY as a placeholder {{id}} for a fact, e.g. "East led with {{a3}}."
+  Do not write digits yourself (years/dates already in fact labels are fine).
+- Do not add %, $ or units next to placeholders; they are formatted automatically.
+- Mention statistical significance only by citing a p-value fact, and only if p < 0.05.
+- Describe associations, never causes (no "causes", "drives", "leads to", "due to").
+- If a note says data is incomplete or truncated, mention that caveat.
+Return JSON: {"headline": "<max 12 words, no digits>", "explanation": "<sentences>"}"""
+
+EXPLAIN_USER = """Question: {question}
+Assumptions: {assumptions}
+Notes: {notes}
+
+FACTS (id | label | value):
+{facts}
+
+Return the JSON."""

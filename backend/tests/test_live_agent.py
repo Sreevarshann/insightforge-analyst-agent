@@ -37,7 +37,9 @@ def live(client: TestClient, settings: Settings) -> TestClient:
     n = 300
     df = pd.DataFrame(
         {
-            "order_date": (pd.Timestamp("2025-01-01") + pd.to_timedelta(rng.integers(0, 365, n), "D")).date,
+            "order_date": (
+                pd.Timestamp("2025-01-01") + pd.to_timedelta(rng.integers(0, 365, n), "D")
+            ).date,
             "region": rng.choice(["East", "West", "North"], n),
             "revenue": rng.uniform(10, 100, n).round(2),
             "churned": rng.integers(0, 2, n),
@@ -58,8 +60,18 @@ def live(client: TestClient, settings: Settings) -> TestClient:
         ("Which region has the highest churn rate?", {"rate", "aggregate"}),
     ],
 )
-def test_live_planner_produces_executable_plan(live: TestClient, question: str, ops: set[str]) -> None:
+def test_live_planner_produces_executable_plan(
+    live: TestClient, question: str, ops: set[str]
+) -> None:
     a = live.post("/api/analyses", json={"question": question}).json()
-    print(question, "->", a["status"], [s["op"] for s in a["steps"]], a["plan"]["attempts"], a["duration_ms"], "ms")
+    print(
+        question,
+        "->",
+        a["status"],
+        [s["op"] for s in a["steps"]],
+        a["plan"]["attempts"],
+        a["duration_ms"],
+        "ms",
+    )
     assert a["status"] == "completed", a["explanation"]
     assert a["steps"][0]["op"] in ops | {"sql"}

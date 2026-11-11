@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from insightforge import __version__
-from insightforge.agent.service import deterministic_summary
+from insightforge.agent.explain import llm_explainer
 from insightforge.api import analyses, datasets, health, ops, query
 from insightforge.config import Settings, get_settings
 from insightforge.db.session import make_engine, make_sessionmaker, run_migrations
@@ -41,7 +41,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
-    app.state.explain_factory = deterministic_summary
+    app.state.explain_factory = llm_explainer
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
