@@ -120,6 +120,9 @@ def _macos_profile(read_paths: list[Path]) -> str:
 """
 
 
+AS_HEADROOM_MB = 3072
+
+
 def _preexec(limits: SandboxLimits) -> None:  # runs in the child before exec
     import resource
 
@@ -129,8 +132,10 @@ def _preexec(limits: SandboxLimits) -> None:  # runs in the child before exec
     resource.setrlimit(resource.RLIMIT_NOFILE, (256, 256))
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     if platform.system() == "Linux":
-        # Address-space cap: DuckDB limit + headroom for the interpreter and libraries.
-        cap = (limits.memory_mb + 768) * 1024 * 1024
+        # Address-space cap as a runaway guard. DuckDB's memory_limit is the real budget;
+        # its allocator reserves much more *virtual* space than it uses (CI showed a
+        # segfault with +768 MB on x86-64), so the headroom is deliberately generous.
+        cap = (limits.memory_mb + AS_HEADROOM_MB) * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
     os.setsid()
 

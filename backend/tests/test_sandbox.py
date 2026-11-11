@@ -120,7 +120,21 @@ def test_os_sandbox_blocks_persistent_writes(parquet: Path) -> None:
     assert b"WROTE" not in res.stdout and not target.exists()
 
 
+def test_resource_limits_are_applied_in_child() -> None:
+    code = "import resource as r; print(r.getrlimit(r.RLIMIT_FSIZE)[0], r.getrlimit(r.RLIMIT_CPU)[0], r.getrlimit(r.RLIMIT_AS)[0])"
+    limits = SandboxLimits(timeout_seconds=4, memory_mb=256)
+    out = subprocess.run(
+        [sys.executable, "-I", "-c", code],
+        capture_output=True,
+        check=True,
+        preexec_fn=lambda: sb._preexec(limits),
+    ).stdout.split()
+    assert out[0] == b"0" and out[1] == b"5"
+    if platform.system() == "Linux":
+        assert int(out[2]) == (256 + sb.AS_HEADROOM_MB) * 1024 * 1024
+
+
 @pytest.mark.skipif(platform.system() != "Linux", reason="RLIMIT_AS enforced on Linux only")
-def test_linux_address_space_limit_applied(parquet: Path) -> None:
+def test_linux_address_space_limit_allows_normal_queries(parquet: Path) -> None:
     r = run_sandboxed("SELECT 1 FROM t LIMIT 1", {"t": parquet}, SandboxLimits(memory_mb=256))
     assert r.ok, r.error
