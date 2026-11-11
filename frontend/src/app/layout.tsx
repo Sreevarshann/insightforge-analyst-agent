@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import { themeInitScript } from "@/components/theme";
 import "./globals.css";
@@ -15,10 +16,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
       <body className="min-h-dvh antialiased">
+        <Script id="theme-init" strategy="beforeInteractive">{themeInitScript}</Script>
         <Providers>{children}</Providers>
       </body>
     </html>
