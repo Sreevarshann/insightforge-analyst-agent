@@ -4,9 +4,10 @@ import queue
 import threading
 from collections.abc import Iterator
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -17,6 +18,7 @@ from insightforge.charts.builder import ChartConfig, ChartError, build_figure
 from insightforge.db.models import Analysis
 from insightforge.llm.base import LLMProvider
 from insightforge.llm.factory import make_provider
+from insightforge.reports.render import table_csv, to_html, to_markdown
 
 router = APIRouter(prefix="/analyses", tags=["analyses"])
 
@@ -177,6 +179,40 @@ def save_charts(analysis_id: str, body: list[ChartIn], db: DbSession) -> Analysi
     a.charts_json = charts
     db.commit()
     return to_out(a)
+
+
+@router.get("/{analysis_id}/report")
+def report(
+    analysis_id: str, db: DbSession, format: Literal["md", "html"] = "html", download: bool = False
+) -> Response:
+    a = _load(analysis_id, db)
+    name = f"insightforge-{a.id[:8]}.{format}"
+    headers = {"Content-Disposition": f'attachment; filename="{name}"'} if download else {}
+    if format == "md":
+        return PlainTextResponse(
+            to_markdown(a), media_type="text/markdown; charset=utf-8", headers=headers
+        )
+    # Report HTML is self-contained; a strict CSP limits scripts to the pinned Plotly CDN.
+    headers["Content-Security-Policy"] = (
+        "default-src 'none'; script-src 'unsafe-inline' https://cdn.plot.ly; style-src 'unsafe-inline'; img-src data:"
+    )
+    return HTMLResponse(to_html(a), headers=headers)
+
+
+@router.get("/{analysis_id}/export.csv")
+def export_csv(analysis_id: str, db: DbSession, step: int = 1, table: str = "result") -> Response:
+    a = _load(analysis_id, db)
+    s = next((x for x in a.steps_json if x.get("step") == step), None)
+    t = next((x for x in (s or {}).get("tables", []) if x["name"] == table), None)
+    if t is None:
+        raise HTTPException(status_code=404, detail="Table not found")
+    return Response(
+        table_csv(t),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="insightforge-{a.id[:8]}-step{step}-{table}.csv"'
+        },
+    )
 
 
 @router.get("/{analysis_id}", response_model=AnalysisOut)
