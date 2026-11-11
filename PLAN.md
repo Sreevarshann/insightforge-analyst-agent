@@ -25,7 +25,7 @@
 2. Metadata DB and configuration ✔
 3. Dataset ingestion ✔
 4. Profiling engine ✔
-5. SQL validation + sandboxed execution
+5. SQL validation + sandboxed execution ✔
 6. Statistical operations
 7. LLM providers + agent planner
 8. Numerical verifier
