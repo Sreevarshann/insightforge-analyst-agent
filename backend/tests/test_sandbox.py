@@ -67,10 +67,14 @@ def test_memory_limit_surfaces_as_error(parquet: Path) -> None:
     assert not r.ok
 
 
-def _run_python_in_profile(code: str, read_paths: list[Path]) -> subprocess.CompletedProcess[bytes]:
-    profile = sb._macos_profile(sb._read_roots(read_paths))
+LEVEL = sb.isolation_level()
+os_sandboxed = pytest.mark.skipif(LEVEL == "rlimits", reason="no OS sandbox available on this host")
+
+
+def _run_python_sandboxed(code: str, read_paths: list[Path]) -> subprocess.CompletedProcess[bytes]:
+    prefix = sb.wrapper(LEVEL, sb._read_roots(read_paths))
     return subprocess.run(
-        ["sandbox-exec", "-p", profile, sys.executable, "-I", "-c", code],
+        [*prefix, sys.executable, "-I", "-c", code],
         capture_output=True,
         timeout=30,
         check=False,
@@ -78,52 +82,45 @@ def _run_python_in_profile(code: str, read_paths: list[Path]) -> subprocess.Comp
     )
 
 
-macos_only = pytest.mark.skipif(
-    sb.isolation_level() != "sandbox-exec", reason="macOS sandbox-exec not available"
-)
-
-
-@macos_only
+@os_sandboxed
 def test_os_sandbox_blocks_network(parquet: Path) -> None:
     code = (
         "import socket\n"
         "try:\n socket.create_connection(('1.1.1.1', 53), timeout=3); print('CONNECTED')\n"
         "except OSError as e: print('BLOCKED', e.errno)\n"
     )
-    out = _run_python_in_profile(code, [parquet]).stdout.decode()
+    out = _run_python_sandboxed(code, [parquet]).stdout.decode()
     assert "BLOCKED" in out and "CONNECTED" not in out
 
 
-@macos_only
-def test_os_sandbox_blocks_reading_home_files(parquet: Path, tmp_path: Path) -> None:
+@os_sandboxed
+def test_os_sandbox_blocks_reading_home_files(parquet: Path) -> None:
     secret = Path.home() / ".insightforge_sandbox_probe"
     secret.write_text("private")
     try:
-        code = f"open({str(secret)!r}).read(); print('READ')"
-        res = _run_python_in_profile(code, [parquet])
+        res = _run_python_sandboxed(f"open({str(secret)!r}).read(); print('READ')", [parquet])
         assert b"READ" not in res.stdout and res.returncode != 0
     finally:
         secret.unlink()
 
 
-@macos_only
+@os_sandboxed
 def test_os_sandbox_allows_only_registered_dataset(parquet: Path, tmp_path: Path) -> None:
     other = tmp_path / "other.txt"
     other.write_text("nope")
     code = f"print(len(open({str(parquet)!r}, 'rb').read()) > 0); open({str(other)!r}).read()"
-    res = _run_python_in_profile(code, [parquet])
+    res = _run_python_sandboxed(code, [parquet])
     assert res.stdout.startswith(b"True") and res.returncode != 0
 
 
-@macos_only
-def test_os_sandbox_blocks_writes(parquet: Path) -> None:
-    code = "open('/tmp/insightforge_probe.txt', 'w').write('x'); print('WROTE')"
-    res = _run_python_in_profile(code, [parquet])
-    assert b"WROTE" not in res.stdout
-    assert not Path("/tmp/insightforge_probe.txt").exists()
+@os_sandboxed
+def test_os_sandbox_blocks_persistent_writes(parquet: Path) -> None:
+    target = Path.home() / ".insightforge_write_probe"
+    res = _run_python_sandboxed(f"open({str(target)!r}, 'w').write('x'); print('WROTE')", [parquet])
+    assert b"WROTE" not in res.stdout and not target.exists()
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="RLIMIT_AS enforced on Linux only")
 def test_linux_address_space_limit_applied(parquet: Path) -> None:
     r = run_sandboxed("SELECT 1 FROM t LIMIT 1", {"t": parquet}, SandboxLimits(memory_mb=256))
-    assert r.ok
+    assert r.ok, r.error

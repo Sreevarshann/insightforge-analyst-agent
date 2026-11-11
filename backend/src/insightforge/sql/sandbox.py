@@ -60,8 +60,28 @@ def _package_root() -> Path:
     return Path(insightforge.__file__).resolve().parent.parent
 
 
+def _interpreter_link_dirs() -> set[Path]:
+    """Directories named along the interpreter's symlink chain, *unresolved*.
+
+    Tools like uv point ``.venv/bin/python`` at a version-alias directory that is itself a
+    symlink (``cpython-3.13-linux-x86_64-gnu -> cpython-3.13.9-...``). A bind-mount
+    sandbox must expose those link paths, not only the fully resolved target.
+    """
+    dirs: set[Path] = set()
+    current = Path(sys.executable)
+    for _ in range(10):
+        if not current.is_symlink():
+            break
+        target = Path(os.readlink(current))
+        if not target.is_absolute():
+            target = current.parent / target
+        dirs.add(target.parent.parent)  # <python home>/bin/python -> <python home>
+        current = target
+    return dirs
+
+
 def _read_roots(files: list[Path]) -> list[Path]:
-    roots = {
+    roots = _interpreter_link_dirs() | {
         Path(sys.prefix).resolve(),
         Path(sys.base_prefix).resolve(),
         Path(sys.executable).resolve().parent.parent,
@@ -133,20 +153,24 @@ def isolation_level() -> str:
     return "sandbox-exec" if probe[0] == "sandbox-exec" else "bwrap"
 
 
-def _command(level: str, read_paths: list[Path], workdir: Path) -> list[str]:
-    py = [sys.executable, "-I", "-m", "insightforge.sql.worker"]
+def wrapper(level: str, read_paths: list[Path]) -> list[str]:
+    """argv prefix that runs a command inside the given isolation level."""
     if level == "sandbox-exec":
-        return ["sandbox-exec", "-p", _macos_profile(read_paths), *py]
+        return ["sandbox-exec", "-p", _macos_profile(read_paths)]
     if level == "bwrap":
         cmd = ["bwrap", "--unshare-all", "--die-with-parent", "--new-session", "--proc", "/proc"]
-        cmd += ["--dev", "/dev", "--tmpfs", "/tmp", "--chdir", "/tmp"]  # noqa: S108 - inside sandbox
-        for ro in ("/usr", "/lib", "/lib64", "/bin", "/etc/ld.so.cache"):
+        cmd += ["--dev", "/dev", "--tmpfs", "/tmp", "--chdir", "/"]  # noqa: S108 - inside sandbox
+        for ro in ("/usr", "/lib", "/lib64", "/bin", "/etc/ld.so.cache", "/etc/localtime"):
             if Path(ro).exists():
                 cmd += ["--ro-bind", ro, ro]
         for p in read_paths:
             cmd += ["--ro-bind", str(p), str(p)]
-        return [*cmd, *py]
-    return py
+        return cmd
+    return []
+
+
+def _command(level: str, read_paths: list[Path]) -> list[str]:
+    return [*wrapper(level, read_paths), sys.executable, "-I", "-m", "insightforge.sql.worker"]
 
 
 def run_sandboxed(
@@ -165,7 +189,7 @@ def run_sandboxed(
     # cwd "/" is readable inside every profile and holds nothing writable or private.
     workdir = "/"
     # -I ignores PYTHONPATH; the package is importable via the venv's site-packages.
-    cmd = _command(level, _read_roots(files), Path(workdir))
+    cmd = _command(level, _read_roots(files))
     try:
         proc = subprocess.run(  # noqa: S603 - fixed argv, no shell
             cmd,
