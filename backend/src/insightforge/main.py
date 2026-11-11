@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from insightforge import __version__
 from insightforge.agent.explain import llm_explainer
-from insightforge.api import analyses, datasets, health, ops, query
+from insightforge.api import analyses, datasets, health, ops, query, relationships
 from insightforge.config import Settings, get_settings
 from insightforge.db.session import make_engine, make_sessionmaker, run_migrations
 from insightforge.logging import configure_logging
@@ -60,6 +60,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(query.router, prefix="/api")
     app.include_router(ops.router, prefix="/api")
     app.include_router(analyses.router, prefix="/api")
+    app.include_router(relationships.router, prefix="/api")
     return app
 
 

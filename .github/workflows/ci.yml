@@ -28,6 +28,10 @@ jobs:
         run: uv python install 3.13
       - name: Sync dependencies (locked)
         run: uv sync --locked
+      - name: Sandbox diagnostics
+        run: |
+          uv run python -c "from insightforge.sql.sandbox import isolation_level; print('isolation:', isolation_level())"
+          command -v bwrap || echo "bwrap not installed"
       - name: Ruff lint
         run: uv run ruff check .
       - name: Ruff format check

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 import os
 import platform
 import shutil
@@ -30,6 +31,8 @@ from pathlib import Path
 from typing import Any
 
 import insightforge
+
+log = logging.getLogger("insightforge.sandbox")
 
 
 @dataclass(frozen=True)
@@ -177,6 +180,15 @@ def run_sandboxed(
     except subprocess.TimeoutExpired:
         return _failure(level, "Query exceeded the time limit", "Timeout")
     if proc.returncode != 0 and not proc.stdout:
+        # stderr can contain paths; it goes to the server log only, never to the client.
+        log.warning(
+            "sandbox_worker_failed",
+            extra={
+                "isolation": level,
+                "returncode": proc.returncode,
+                "stderr": proc.stderr.decode(errors="replace")[-2000:],
+            },
+        )
         reason = "Query process was terminated (resource limit)"
         if proc.returncode in (-24, 152):  # SIGXCPU
             reason = "Query exceeded the CPU time limit"

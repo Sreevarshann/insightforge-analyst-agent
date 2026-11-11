@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from insightforge.config import Settings
-from insightforge.db.models import Dataset, QueryLog
+from insightforge.db.models import Dataset, QueryLog, Relationship
 from insightforge.sql.sandbox import SandboxLimits, run_sandboxed
 from insightforge.sql.validator import SQLRejected, validate_sql
 
@@ -46,6 +46,20 @@ def dataset_catalog(db: Session, settings: Settings) -> dict[str, tuple[Path, st
     return out
 
 
+def relationship_keys(db: Session) -> list[tuple[str, str, str, str]]:
+    names = {d.id: d.table_name.lower() for d in db.scalars(select(Dataset))}
+    return [
+        (
+            names[r.left_dataset_id],
+            r.left_column.lower(),
+            names[r.right_dataset_id],
+            r.right_column.lower(),
+        )
+        for r in db.scalars(select(Relationship))
+        if r.left_dataset_id in names and r.right_dataset_id in names
+    ]
+
+
 def execute_query(
     db: Session,
     settings: Settings,
@@ -60,7 +74,7 @@ def execute_query(
     log = QueryLog(sql=sql[:20_000], origin=origin, analysis_id=analysis_id, accepted=False)
     db.add(log)
     try:
-        validated = validate_sql(sql, catalog.keys())
+        validated = validate_sql(sql, catalog.keys(), relationship_keys(db))
     except SQLRejected as exc:
         log.rejection_reason = str(exc)
         db.commit()

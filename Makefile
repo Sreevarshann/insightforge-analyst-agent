@@ -25,3 +25,11 @@ fmt:
 # Requires a running Ollama with qwen3:4b-instruct pulled.
 test-live:
 	cd $(BACKEND) && uv run pytest -m live -s
+
+.PHONY: seed demo-data
+# Generate the SYNTHETIC Lumen Commerce CSVs and load them as demo datasets.
+seed:
+	cd $(BACKEND) && uv run python -m insightforge.demo.seed
+
+demo-data:
+	cd $(BACKEND) && uv run python -m insightforge.demo.generate --out ../demo-data
