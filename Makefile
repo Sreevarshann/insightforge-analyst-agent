@@ -60,3 +60,14 @@ install-web:
 
 dev-web:
 	cd frontend && npm run dev -- --port 3101
+
+.PHONY: up down build
+up:
+	docker compose up -d --build
+
+down:
+	docker compose down
+
+build:
+	cd frontend && npm run build
+	docker compose build

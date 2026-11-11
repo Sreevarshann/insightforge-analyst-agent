@@ -209,7 +209,8 @@ def build_graph(
         out, notes = [], []
         for r in state.get("results", []):
             hint = r.get("chart_hint")
-            cfg = suggest_config(hint, r["tables"], title=r.get("purpose") or None)
+            # The card already shows the question; long step purposes make poor chart titles.
+            cfg = suggest_config(hint, r["tables"], title=None)
             if cfg is None:
                 continue
             try:

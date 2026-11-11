@@ -1,0 +1,36 @@
+# InsightForge local stack. Unique project name, network and volume so it never collides
+# with other local projects. The LLM is the host's Ollama (no model server is started here).
+name: insightforge
+
+services:
+  api:
+    build: ./backend
+    environment:
+      INSIGHTFORGE_LLM_PROVIDER: ${INSIGHTFORGE_LLM_PROVIDER:-ollama}
+      INSIGHTFORGE_LLM_BASE_URL: ${INSIGHTFORGE_LLM_BASE_URL:-http://host.docker.internal:11434}
+      INSIGHTFORGE_LLM_MODEL: ${INSIGHTFORGE_LLM_MODEL:-qwen3:4b-instruct}
+      INSIGHTFORGE_CORS_ORIGINS: '["http://localhost:3101"]'
+    volumes:
+      - insightforge-data:/data
+    ports:
+      - "127.0.0.1:8111:8111"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 2g
+    networks: [insightforge]
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        INSIGHTFORGE_API_ORIGIN: http://api:8111
+    depends_on: [api]
+    ports:
+      - "127.0.0.1:3101:3101"
+    networks: [insightforge]
+
+volumes:
+  insightforge-data:
+
+networks:
+  insightforge:

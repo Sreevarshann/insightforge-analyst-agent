@@ -37,5 +37,9 @@ Headlines must contain no digits; otherwise the step purpose is used.
   cannot verify arbitrary qualitative statements — in the churn run above the model added
   "Data for all regions is complete…", which is not checked. The UI therefore always shows
   the computed tables and facts next to the prose.
+* It checks that each number is a real computed value, not that the sentence uses it
+  sensibly. In a live trend run the model wrote "a 1.3% drop from September 2025" for an
+  August value: 1.3% is a genuine fact, so the sentence passed. Period-consistency checks
+  for time-series facts are a future improvement.
 * Group-label checking only applies to facts that carry group metadata.
 * A raw number that coincidentally equals some unrelated fact would pass the number check.

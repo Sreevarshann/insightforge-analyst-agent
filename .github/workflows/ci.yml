@@ -95,6 +95,19 @@ jobs:
           path: frontend/playwright-report
           retention-days: 7
 
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    needs: [backend, web]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
+      - name: API container serves /api/health
+        run: |
+          docker run -d --name if-api -p 127.0.0.1:8111:8111 insightforge-api
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8111/api/health && exit 0; sleep 2; done
+          docker logs if-api; exit 1
+
   secrets:
     name: Secret scan (full history)
     runs-on: ubuntu-latest

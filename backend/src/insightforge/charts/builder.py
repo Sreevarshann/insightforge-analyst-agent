@@ -200,7 +200,7 @@ def build_figure(cfg: ChartConfig, tables: list[dict[str, Any]]) -> dict[str, An
     fig.update_layout(
         title={"text": cfg.title} if cfg.title else None,
         hovermode="closest" if t in {"scatter", "box"} else "x unified",
-        legend={"orientation": "h", "y": -0.2},
+        legend={"orientation": "h", "y": -0.28, "x": 0},
         margin={"l": 48, "r": 16, "t": 48 if cfg.title else 16, "b": 48},
     )
     spec = json.loads(fig.to_json())

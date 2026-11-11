@@ -239,6 +239,8 @@ def run_benchmark(
                 "verification": (a.verification_json or {}).get("status"),
                 "latency_ms": round(latency, 1),
                 "note": case.note,
+                "step_args": [s["args"] for s in a.steps_json],
+                "errors": (a.plan_json or {}).get("errors", []),
             }
             if case.kind == "numeric":
                 expected = case.expected(frames) if case.expected else {}

@@ -25,11 +25,12 @@ Records only work that has actually been done and verified.
 | 13 | Analysis Copilot workspace: 3-pane layout, live SSE stage progress, result cards (verified explanation + badge, Plotly charts, step tables, notes), clarification flow, save/bookmark, inspector (facts & verification checks & removed sentences & draft, executed SQL, trace timings + raw plan + LLM usage, Chart Studio) | see git log | ✔ | eslint ✔ · tsc ✔ · verified in browser with live local model |
 | 14 | Reports & exports: Markdown, self-contained HTML (escaped, CSP, validated charts), CSV with formula-injection neutralisation | `c1ef9f6` | ✔ | pytest 170 passed, 1 skipped |
 | 15 | Saved Analyses page (search/filter/status), Query Console (Monaco SQL editor, sandbox isolation level shown, audit log), export menu on result cards | see git log | ✔ | eslint ✔ · tsc ✔ · browser-verified |
+| 16 | Evaluation benchmark + dashboard, Playwright E2E (6 journeys), Vitest, screenshot spec | `6d0b5f6` | ✔ | E2E 6/6, Vitest 12/12 |
+| — | CI: frontend + E2E jobs; dompurify override | `a6e0936` | ✔ | **CI run 42963221590: backend, frontend, E2E, secrets all green** |
+| 17 | Live benchmark (qwen3:4b-instruct): numerical 6/9, execution 7/9, clarification/injection/policy 100%; docs set; README; Docker + Compose; screenshots | see git log | ✔ | see docs/EVALUATION.md |
 
 ## Known limitations
-- No functional features yet beyond the health endpoint.
+- See README "Known limitations" and docs/SECURITY.md.
 
 ## Next
-- Fix Linux CI sandbox failure.
-- Frontend (Next.js) design system.
-- Read-only PostgreSQL connector (planned alongside SQL execution).
+- InsightForge core complete; optional: PostgreSQL connector, PDF export, worker pool.
