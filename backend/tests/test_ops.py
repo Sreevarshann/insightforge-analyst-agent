@@ -247,3 +247,18 @@ def test_operation_queries_are_audited(loaded: TestClient) -> None:
     run(loaded, op="aggregate", measure="revenue")
     hist = loaded.get("/api/query/history").json()
     assert hist[0]["origin"] == "agent" and hist[0]["accepted"]
+
+
+def test_single_column_fields_accept_one_item_lists(loaded: TestClient) -> None:
+    r = run(loaded, op="trend", measure="revenue", date_column="order_date", group_by=["region"])
+    assert r["args"]["group_by"] == "region"
+    bad = loaded.post(
+        "/api/ops/run",
+        json={
+            "dataset": "orders",
+            "op": "trend",
+            "date_column": "order_date",
+            "group_by": ["region", "churned"],
+        },
+    )
+    assert bad.status_code == 422 and "exactly one group_by" in bad.text

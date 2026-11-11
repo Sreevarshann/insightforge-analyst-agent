@@ -12,6 +12,7 @@ def events(client: TestClient, question: str) -> list[dict]:  # type: ignore[typ
     with client.stream("POST", "/api/analyses/stream", json={"question": question}) as res:
         assert res.status_code == 200
         assert res.headers["content-type"].startswith("text/event-stream")
+        assert "no-transform" in res.headers["cache-control"]
         for line in res.iter_lines():
             if line.startswith("data: "):
                 out.append(json.loads(line[6:]))

@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Ident = Annotated[str, Field(min_length=1, max_length=255)]
 Agg = Literal["sum", "avg", "count", "count_distinct", "min", "max", "median"]
@@ -36,6 +36,18 @@ class Filter(BaseModel):
         elif self.value is None or isinstance(self.value, (dict, list)):
             raise ValueError("comparison filters need a scalar value")
         return self
+
+
+def _single_column(v: Any) -> Any:
+    """Accept ["col"] where one column is expected (a common LLM formatting slip);
+    reject multi-column lists with an actionable message."""
+    if isinstance(v, list):
+        if len(v) == 0:
+            return None
+        if len(v) == 1:
+            return v[0]
+        raise ValueError("this operation supports exactly one group_by column")
+    return v
 
 
 class _Op(BaseModel):
@@ -76,6 +88,8 @@ class TrendArgs(_Op):
     grain: Grain = "month"
     group_by: Ident | None = None
     start: dt.date | None = None
+
+    _one_group = field_validator("group_by", mode="before")(_single_column)
     end: dt.date | None = None
 
 
@@ -124,6 +138,8 @@ class OutlierArgs(_Op):
     threshold: float = Field(default=1.5, gt=0, le=10)
     group_by: Ident | None = None
     min_group_size: int = Field(default=5, ge=1)
+
+    _one_group = field_validator("group_by", mode="before")(_single_column)
 
 
 class RegressionArgs(_Op):

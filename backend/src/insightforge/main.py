@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from insightforge import __version__
 from insightforge.agent.explain import llm_explainer
 from insightforge.api import analyses, datasets, health, ops, query, relationships
+from insightforge.api.middleware import SSENoTransform
 from insightforge.config import Settings, get_settings
 from insightforge.db.session import make_engine, make_sessionmaker, run_migrations
 from insightforge.logging import configure_logging
@@ -42,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.explain_factory = llm_explainer
+    app.add_middleware(SSENoTransform)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
