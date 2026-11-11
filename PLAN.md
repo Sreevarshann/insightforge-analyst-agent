@@ -21,8 +21,8 @@
 
 ## Milestones
 
-1. Repository setup ← current
-2. Metadata DB and configuration
+1. Repository setup ✔
+2. Metadata DB and configuration ✔
 3. Dataset ingestion
 4. Profiling engine
 5. SQL validation + sandboxed execution

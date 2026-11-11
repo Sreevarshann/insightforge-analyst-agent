@@ -7,10 +7,12 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "alembic>=1.20.1",
     "fastapi>=0.162.4",
     "pydantic>=2.14.3",
     "pydantic-settings>=2.16.2",
     "python-multipart>=0.0.33",
+    "sqlalchemy>=2.1.8",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -38,12 +40,14 @@ ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S"]
+"src/insightforge/migrations/**" = ["E501", "I", "UP", "RUF"]
 
 [tool.mypy]
 python_version = "3.13"
 strict = true
 mypy_path = "src"
 packages = ["insightforge"]
+exclude = ["migrations/"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]

@@ -20,3 +20,7 @@ def test_startup_creates_data_directories(client: TestClient, settings: Settings
 
 def test_unknown_route_returns_404(client: TestClient) -> None:
     assert client.get("/api/does-not-exist").status_code == 404
+
+
+def test_startup_runs_migrations(client: TestClient, settings: Settings) -> None:
+    assert settings.metadata_db_path.is_file()

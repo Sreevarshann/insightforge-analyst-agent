@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from insightforge import __version__
 from insightforge.api import health
 from insightforge.config import Settings, get_settings
+from insightforge.db.session import make_engine, make_sessionmaker, run_migrations
 from insightforge.logging import configure_logging
 
 log = logging.getLogger("insightforge")
@@ -25,8 +26,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         settings.datasets_dir.mkdir(parents=True, exist_ok=True)
+        engine = make_engine(settings.metadata_db_path)
+        run_migrations(engine)
+        app.state.engine = engine
+        app.state.sessionmaker = make_sessionmaker(engine)
         log.info("startup", extra={"environment": settings.environment})
         yield
+        engine.dispose()
 
     app = FastAPI(
         title="InsightForge API",
